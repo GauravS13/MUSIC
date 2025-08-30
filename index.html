@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Polyphonic Web - P2P Audiovisual Synthesizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+          /* Modern, responsive, beautiful UI */
+          :root {
+            --primary: #00ffd0;
+            --primary-dark: #00bfae;
+            --accent: #ff4ecd;
+            --accent2: #6c47ff;
+            --bg: #181c2b;
+            --bg-panel: rgba(30,34,54,0.85);
+            --bg-glass: rgba(24,28,43,0.85);
+            --border: #2e3750;
+            --border-accent: var(--primary);
+            --text: #f6faff;
+            --text-muted: #b3c2d6;
+            --shadow: 0 8px 32px 0 rgba(0,255,208,0.18);
+            --glass-blur: blur(18px);
+            --radius: 1.4rem;
+            --transition: 0.22s cubic-bezier(.4,0,.2,1);
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          html, body {
+            min-height: 100vh;
+            background: linear-gradient(120deg, #23243a 0%, #2e3750 100%);
+            color: var(--text);
+            font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.7;
+            user-select: none;
+            letter-spacing: 0.01em;
+          }
+          #visualizer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+          }
+          #ui {
+            position: fixed;
+            top: 2vw;
+            left: 2vw;
+            z-index: 10;
+            background: var(--bg-glass);
+            padding: 2.2rem 1.7rem 1.7rem 1.7rem;
+            border-radius: var(--radius);
+            max-width: 410px;
+            min-width: 260px;
+            width: 28vw;
+            box-shadow: var(--shadow);
+            border: 2.5px solid var(--primary);
+            font-size: 1.05rem;
+            backdrop-filter: var(--glass-blur);
+            transition: box-shadow var(--transition), width var(--transition), height var(--transition);
+            overflow-y: scroll !important;
+            max-height: 80vh;
+            background-image: linear-gradient(120deg, rgba(0,255,208,0.08) 0%, rgba(255,78,205,0.07) 100%);
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--bg-panel);
+          }
+          #ui::-webkit-scrollbar {
+            width: 10px;
+          }
+          #ui::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 8px;
+          }
+          #ui::-webkit-scrollbar-track {
+            background: var(--bg-panel);
+          }
+          .section {
+            margin-bottom: 1.5rem;
+            border: 1.5px solid var(--border);
+            padding: 1.2rem 1.1rem 1.1rem 1.1rem;
+            border-radius: 1.1rem;
+            background: var(--bg-panel);
+            box-shadow: 0 4px 18px 0 rgba(0,255,208,0.06);
+            transition: box-shadow var(--transition);
+          }
+          .section h3 {
+            color: var(--accent);
+            margin-bottom: 1.1rem;
+            font-size: 1.25rem;
+            border-bottom: 1.5px solid var(--primary);
+            padding-bottom: 0.4rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-shadow: 0 2px 8px #ff4ecd33;
+          }
+          .step {
+            background: linear-gradient(90deg, rgba(0,255,208,0.10) 0%, rgba(108,71,255,0.10) 100%);
+            border: 1.5px solid var(--primary-dark);
+            border-radius: 0.7rem;
+            padding: 0.7rem 1rem;
+            margin: 0.6rem 0;
+            box-shadow: 0 2px 8px 0 rgba(0,255,208,0.04);
+          }
+          .step-title {
+            font-weight: 700;
+            color: var(--accent2);
+            font-size: 1.08rem;
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.01em;
+          }
+          button {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            color: #fff;
+            border: none;
+            padding: 0.7em 1.5em;
+            margin: 0.3em 0.3em 0.3em 0;
+            cursor: pointer;
+            border-radius: 0.7em;
+            font-family: inherit;
+            font-size: 1.08em;
+            font-weight: 700;
+            min-height: 2.5em;
+            min-width: 7em;
+            box-shadow: 0 2px 12px 0 rgba(0,255,208,0.10);
+            transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+            letter-spacing: 0.01em;
+          }
+          button:hover, button:focus {
+            background: linear-gradient(90deg, var(--accent2) 0%, var(--primary) 100%);
+            outline: 2.5px solid var(--accent2);
+            transform: scale(1.06);
+            box-shadow: 0 6px 24px 0 rgba(108,71,255,0.18);
+          }
+          button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+          }
+          button.ready {
+            background: linear-gradient(90deg, #00bfae 0%, #00ffd0 100%);
+            color: #fff;
+            border: none;
+          }
+          button.stop {
+            background: linear-gradient(90deg, #440000 0%, #ff4ecd 100%);
+            color: #fff;
+            border: none;
+          }
+          input, textarea {
+            background: rgba(30,34,54,0.92);
+            color: var(--primary);
+            border: 1.7px solid var(--primary);
+            padding: 0.7em 1em;
+            font-family: inherit;
+            font-size: 1.08em;
+            width: 100%;
+            margin: 0.3em 0 1em 0;
+            border-radius: 0.7em;
+            transition: border var(--transition), box-shadow var(--transition);
+            box-shadow: 0 2px 8px 0 rgba(0,255,208,0.06);
+          }
+          input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent2);
+            box-shadow: 0 0 12px 0 var(--accent2);
+          }
+          textarea {
+            min-height: 70px;
+            resize: vertical;
+            font-size: 1.05em;
+          }
+          .controls {
+            display: flex;
+            gap: 0.7em;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 0.7em;
+          }
+          .status {
+            font-size: 1em;
+            margin: 0.3em 0;
+            padding: 0.5em 1em;
+            border-radius: 0.7em;
+            font-weight: 600;
+            background: rgba(0,255,208,0.07);
+            color: var(--primary-dark);
+            box-shadow: 0 2px 8px 0 rgba(0,255,208,0.04);
+          }
+          .ready {
+            color: var(--primary-dark);
+            background: rgba(0,255,208,0.13);
+          }
+          .connecting {
+            color: #ffe066;
+            background: rgba(255,255,0,0.13);
+          }
+          .error {
+            color: var(--accent);
+            background: rgba(255,78,205,0.13);
+          }
+          /* Keyboard */
+          #keyboard {
+            position: fixed;
+            bottom: 7vw;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            display: flex;
+            gap: 4px;
+            opacity: 1;
+            background: var(--bg-glass);
+            border: 2.5px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 1.5em 2.5em 2.5em 2.5em;
+            box-shadow: 0 0 48px 0 var(--primary);
+            transition: opacity var(--transition), box-shadow var(--transition);
+            background-image: linear-gradient(120deg, rgba(0,255,208,0.10) 0%, rgba(255,78,205,0.10) 100%);
+          }
+          #keyboard.enabled {
+            opacity: 1;
+          }
+          .key {
+            width: 2.5em;
+            height: 7em;
+            background: linear-gradient(180deg, #fff 60%, #e0eaff 100%);
+            border: 2px solid #e0eaff;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: end;
+            justify-content: center;
+            padding-bottom: 0.7em;
+            font-size: 1em;
+            color: #222;
+            border-radius: 0.5em 0.5em 1em 1em;
+            margin: 0 0.2em;
+            box-shadow: 0 4px 16px 0 rgba(0,255,208,0.08);
+            transition: all var(--transition);
+          }
+          .key.black {
+            width: 1.5em;
+            height: 4em;
+            background: linear-gradient(180deg, #23243a 60%, #6c47ff 100%);
+            color: #fff;
+            margin: 0 -0.8em;
+            z-index: 11;
+            border-radius: 0.3em 0.3em 0.7em 0.7em;
+            box-shadow: 0 2px 12px 0 rgba(108,71,255,0.18);
+            border: 2px solid #6c47ff;
+          }
+          .key.active {
+            background: linear-gradient(180deg, var(--accent) 60%, var(--accent2) 100%);
+            color: #fff;
+            transform: translateY(0.3em) scale(1.07);
+            box-shadow: 0 0 24px 0 var(--accent2);
+            border-color: var(--accent2);
+          }
+          .key.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+          }
+          /* Key mapping guide */
+          #keyMapping {
+            position: fixed;
+            bottom: 7vw;
+            right: 2vw;
+            background: var(--bg-glass);
+            border: 2px solid var(--accent2);
+            border-radius: var(--radius);
+            padding: 1.3em 1.5em;
+            font-size: 1.08em;
+            z-index: 10;
+            max-width: 260px;
+            box-shadow: 0 4px 18px 0 rgba(108,71,255,0.10);
+            background-image: linear-gradient(120deg, rgba(0,255,208,0.10) 0%, rgba(108,71,255,0.10) 100%);
+          }
+          .mapping-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.3em 0;
+            padding: 0.3em 1em;
+            border-radius: 0.5em;
+            font-size: 1em;
+            background: rgba(108,71,255,0.06);
+            color: var(--text);
+            font-weight: 500;
+            letter-spacing: 0.01em;
+          }
+          .mapping-row:nth-child(even) {
+            background: rgba(0,255,208,0.07);
+          }
+          .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 1em;
+            margin: 0.7em 0;
+          }
+          input[type="range"] {
+            width: 120px;
+            height: 1.4em;
+            accent-color: var(--accent2);
+            background: transparent;
+          }
+          .minimize {
+            position: absolute;
+            top: 1.1em;
+            right: 1.1em;
+            background: linear-gradient(120deg, var(--primary) 0%, var(--accent2) 100%);
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.5em;
+            padding: 0;
+            min-height: auto;
+            min-width: auto;
+            width: 2.2em;
+            height: 2.2em;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px 0 rgba(0,255,208,0.10);
+            transition: color var(--transition), box-shadow var(--transition), background var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .minimize:hover {
+            color: #fff;
+            background: linear-gradient(120deg, var(--accent2) 0%, var(--primary) 100%);
+            box-shadow: 0 4px 16px 0 rgba(108,71,255,0.18);
+          }
+          #ui.minimized {
+            width: 52px !important;
+            height: 52px !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            max-width: 52px !important;
+            max-height: 52px !important;
+            padding: 0 !important;
+            border-radius: 50%;
+            overflow: hidden !important;
+            box-shadow: none;
+            transition: all var(--transition);
+          }
+          #ui.minimized > *:not(.minimize) {
+            display: none !important;
+          }
+          #ui .minimize {
+            z-index: 100;
+          }
+
+          #ui.p2p-scroll {
+            overflow-y: auto !important;
+            max-height: 80vh;
+            box-shadow: 0 8px 32px 0 rgba(255,78,205,0.10);
+          }
+          .mode-selector {
+            display: flex;
+            gap: 0.7em;
+            margin-bottom: 1.1em;
+          }
+          .mode-btn {
+            flex: 1;
+            padding: 0.7em 1.1em;
+            font-size: 1.08em;
+            min-height: 2.3em;
+            border-radius: 0.7em;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            border: none;
+            font-weight: 700;
+            transition: background var(--transition), box-shadow var(--transition);
+            box-shadow: 0 2px 8px 0 rgba(0,255,208,0.08);
+          }
+          .mode-btn.active {
+            background: linear-gradient(90deg, var(--accent) 0%, var(--primary) 100%);
+            border: none;
+            box-shadow: 0 4px 16px 0 rgba(255,78,205,0.12);
+          }
+          /* Responsive design */
+          @media (max-width: 1200px) {
+            #ui {
+              width: 38vw;
+              min-width: 220px;
+              max-width: 98vw;
+              left: 1vw;
+              right: 1vw;
+              padding: 1.5rem 0.8rem 0.8rem 0.8rem;
+            }
+          }
+          @media (max-width: 900px) {
+            #ui {
+              width: 98vw;
+              min-width: 0;
+              max-width: 99vw;
+              left: 0;
+              right: 0;
+              top: 0;
+              border-radius: 1em;
+              margin: 0 auto;
+              padding: 1.2rem 0.5rem 0.5rem 0.5rem;
+            }
+            #keyboard {
+              padding: 0.8em 0.8em 1.5em 0.8em;
+            }
+            #keyMapping {
+              position: static;
+              margin: 1.2em auto 0 auto;
+              left: 0; right: 0; bottom: 0;
+              border-radius: 1em;
+              width: 98vw;
+              max-width: 98vw;
+              right: 0;
+              padding: 0.8em 0.8em;
+            }
+          }
+          @media (max-width: 600px) {
+            #ui {
+              width: 99vw;
+              min-width: 0;
+              max-width: 99vw;
+              left: 0;
+              right: 0;
+              top: 0;
+              border-radius: 1em;
+              margin: 0 auto;
+              padding: 1rem 0.2rem 0.2rem 0.2rem;
+            }
+            #keyboard {
+              position: static;
+              left: 0; right: 0; bottom: 0;
+              transform: none;
+              width: 99vw;
+              min-width: 0;
+              border-radius: 1em;
+              padding: 0.8em 0.2em 1.5em 0.2em;
+            }
+            #keyMapping {
+              position: static;
+              margin: 1.2em auto 0 auto;
+              left: 0; right: 0; bottom: 0;
+              border-radius: 1em;
+              width: 99vw;
+              max-width: 99vw;
+            }
+          }
+          @media (max-width: 400px) {
+            #ui, #keyboard, #keyMapping {
+              font-size: 0.92em;
+              padding: 0.5em 0.2em;
+            }
+            .section {
+              padding: 0.7em 0.2em;
+            }
+          }
+    </style>
+  </head>
+  <body>
+    <!-- README: Manual Signaling Steps
+    HOST WORKFLOW:
+    1. Click "Offline Mode" OR "P2P Mode"
+    2. If P2P: Click "Step 1: Create Offer" → Copy SDP → Send to peer
+    3. Peer sends answer SDP back
+    4. Paste answer in text area → Click "Step 3: Connect"
+    5. Click "Ready" to enable keyboard
+    
+    PEER WORKFLOW:
+    1. Receive offer SDP from host
+    2. Click "P2P Mode" → Paste offer → Click "Step 2: Create Answer"
+    3. Copy answer SDP → Send back to host
+    4. Click "Ready" to enable keyboard
+    
+    Testing:
+    - Slow 2G: DevTools → Network → Slow 2G
+    - Offline: Load once, disable network, use air-gapped SDP exchange
+    - Memory: <10MB peak with 2-4 peers (check DevTools Memory tab)
+    - ICE Restart: Use restart button if connection fails
+    -->
+
+    <canvas id="visualizer"></canvas>
+
+    <div id="ui">
+      <button class="minimize" onclick="toggleUI()">−</button>
+
+      <div class="section">
+        <h3>Mode Selection</h3>
+        <div class="mode-selector">
+          <button
+            class="mode-btn active"
+            onclick="setMode('offline')"
+            id="offlineBtn"
+          >
+            Offline Mode
+          </button>
+          <button class="mode-btn" onclick="setMode('p2p')" id="p2pBtn">
+            P2P Mode
+          </button>
+        </div>
+        <button onclick="toggleReady()" id="readyBtn" class="ready">
+          Ready to Play
+        </button>
+      </div>
+
+      <div class="section" id="connectionSection" style="display: none">
+        <h3>P2P Connection Setup</h3>
+        <input
+          type="text"
+          id="displayName"
+          placeholder="Your name (A-Z0-9)"
+          maxlength="16"
+        />
+
+        <div class="step">
+          <div class="step-title">Step 1: Host creates offer</div>
+          <button onclick="createOffer()" id="offerBtn">Create Offer</button>
+          <button onclick="restartICE()" style="font-size: 9px">
+            Restart ICE
+          </button>
+        </div>
+
+        <div class="step">
+          <div class="step-title">Step 2: Peer creates answer</div>
+          <button onclick="createAnswer()" id="answerBtn" disabled>
+            Create Answer
+          </button>
+        </div>
+
+        <textarea
+          id="sdpInput"
+          placeholder="Paste SDP offer/answer here..."
+        ></textarea>
+
+        <div class="step">
+          <div class="step-title">Step 3: Finalize connection</div>
+          <div class="controls">
+            <button onclick="pasteOffer()" id="pasteOfferBtn">
+              Paste Offer
+            </button>
+            <button onclick="pasteAnswer()" id="pasteAnswerBtn" disabled>
+              Connect
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Status</h3>
+        <div class="status" id="connectionStatus">Offline Mode</div>
+        <div class="status" id="fps">FPS: 0</div>
+        <div class="status" id="rtt">RTT: 0ms</div>
+        <div class="status" id="peerCount">Peers: 0</div>
+      </div>
+
+      <div class="section">
+        <h3>Synth Controls</h3>
+        <div class="slider-group">
+          <label>BPM:</label>
+          <input type="range" id="bpm" min="60" max="180" value="120" />
+          <span id="bpmValue">120</span>
+        </div>
+        <div class="slider-group">
+          <label>Gain:</label>
+          <input type="range" id="masterGain" min="0" max="100" value="50" />
+          <span id="gainValue">50</span>
+        </div>
+        <div class="slider-group">
+          <label>Filter:</label>
+          <input
+            type="range"
+            id="filterFreq"
+            min="100"
+            max="8000"
+            value="2000"
+          />
+          <span id="filterValue">2000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard mapping guide -->
+    <div id="keyMapping">
+      <h4 style="color: #ff0088; margin-bottom: 4px">Keyboard Controls</h4>
+      <div class="mapping-row"><span>A</span><span>→ C</span></div>
+      <div class="mapping-row"><span>W</span><span>→ C#</span></div>
+      <div class="mapping-row"><span>S</span><span>→ D</span></div>
+      <div class="mapping-row"><span>E</span><span>→ D#</span></div>
+      <div class="mapping-row"><span>D</span><span>→ E</span></div>
+      <div class="mapping-row"><span>F</span><span>→ F</span></div>
+      <div class="mapping-row"><span>T</span><span>→ F#</span></div>
+      <div class="mapping-row"><span>G</span><span>→ G</span></div>
+      <div class="mapping-row"><span>Y</span><span>→ G#</span></div>
+      <div class="mapping-row"><span>H</span><span>→ A</span></div>
+      <div class="mapping-row"><span>U</span><span>→ A#</span></div>
+      <div class="mapping-row"><span>J</span><span>→ B</span></div>
+    </div>
+
+    <!-- Piano keyboard -->
+    <div id="keyboard"></div>
+    <noscript
+      ><div style="color: red; text-align: center">
+        If you do not see the piano keyboard, please enable JavaScript and
+        reload the page.
+      </div></noscript
+    >
+
+    <script>
+      // Global state
+      let audioContext = null;
+      let masterGain = null;
+      let analyser = null;
+      let filter = null;
+      let compressor = null;
+      let voicePool = [];
+      let activeVoices = new Map();
+      let peers = new Map();
+      let isHost = false;
+      let isReady = false;
+      let keyboardEnabled = false;
+      let currentMode = "offline";
+      let currentBPM = 120;
+      let clockOffset = 0;
+      let lastTempoTime = 0;
+
+      // WebGL/Canvas
+      let gl = null;
+      let canvas = null;
+      let shaderProgram = null;
+      let positionBuffer = null;
+      let colorBuffer = null;
+      let particles = [];
+      let frameCount = 0;
+      let lastFrame = 0;
+
+      // Audio analysis
+      let frequencyData = null;
+      let timeData = null;
+
+      // Message protocol constants
+      const MSG_JOIN = 0x01;
+      const MSG_READY = 0x02;
+      const MSG_NOTE_ON = 0x10;
+      const MSG_NOTE_OFF = 0x11;
+      const MSG_TEMPO = 0x20;
+
+      // Message batching
+      let messageBatch = [];
+      let lastFlush = 0;
+
+      // Keyboard mapping
+      const keyMap = {
+        KeyA: 48, // C4
+        KeyW: 49, // C#4
+        KeyS: 50, // D4
+        KeyE: 51, // D#4
+        KeyD: 52, // E4
+        KeyF: 53, // F4
+        KeyT: 54, // F#4
+        KeyG: 55, // G4
+        KeyY: 56, // G#4
+        KeyH: 57, // A4
+        KeyU: 58, // A#4
+        KeyJ: 59, // B4
+        Digit1: 48, // C4
+        Digit2: 49, // C#4
+        Digit3: 50, // D4
+        Digit4: 51, // D#4
+        Digit5: 52, // E4
+        Digit6: 53, // F4
+        Digit7: 54, // F#4
+        Digit8: 55, // G4
+        Digit9: 56, // G#4
+        Digit0: 57, // A4
+        Minus: 58, // A#4
+        Equal: 59, // B4
+      };
+
+      // Load saved data
+      loadSettings();
+
+      // Setup UI
+      setupUI();
+      setupKeyboard();
+
+      // Setup WebGL
+      setupWebGL();
+
+      // Setup audio (user gesture required)
+      document.addEventListener("click", initAudio, { once: true });
+
+      // Register service worker
+      registerServiceWorker();
+
+      // Start render loop
+      requestAnimationFrame(render);
+
+      // Keyboard event listeners
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("keyup", handleKeyUp);
+
+      console.log("Initialization complete");
+      // ...existing code...
+
+      function setMode(mode) {
+        currentMode = mode;
+        document
+          .getElementById("offlineBtn")
+          .classList.toggle("active", mode === "offline");
+        document
+          .getElementById("p2pBtn")
+          .classList.toggle("active", mode === "p2p");
+        document.getElementById("connectionSection").style.display =
+          mode === "p2p" ? "block" : "none";
+
+        const ui = document.getElementById("ui");
+        if (mode === "offline") {
+          updateStatus("Offline Mode - Ready to play solo");
+          document.getElementById("readyBtn").disabled = false;
+          document.getElementById("readyBtn").textContent = isReady
+            ? "Stop Playing"
+            : "Ready to Play";
+          ui.classList.remove("p2p-scroll");
+        } else {
+          updateStatus("P2P Mode - Follow connection steps");
+          ui.classList.add("p2p-scroll");
+          if (
+            !localConnection ||
+            localConnection.connectionState !== "connected"
+          ) {
+            isReady = false;
+            keyboardEnabled = false;
+            updateKeyboardState();
+            document.getElementById("readyBtn").disabled = true;
+            document.getElementById("readyBtn").textContent = "Ready to Play";
+          }
+        }
+      }
+
+      // Service Worker registration for offline support (using sw.js)
+      function registerServiceWorker() {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker
+            .register("sw.js")
+            .then(() => {
+              console.log("Service Worker registered for test4.html");
+              // Proactively fetch test4.html to ensure it's cached by sw.js
+              fetch("test4.html", { cache: "reload" }).catch(() => {});
+            })
+            .catch((err) =>
+              console.error("Service Worker registration failed:", err)
+            );
+        }
+      }
+
+      // Audio initialization (requires user gesture)
+      async function initAudio() {
+        try {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)(
+            {
+              latencyHint: "interactive",
+              sampleRate: 44100,
+            }
+          );
+
+          // Create audio graph
+          masterGain = audioContext.createGain();
+          filter = audioContext.createBiquadFilter();
+          compressor = audioContext.createDynamicsCompressor();
+          analyser = audioContext.createAnalyser();
+
+          // Configure nodes
+          filter.type = "lowpass";
+          filter.frequency.value = 2000;
+          filter.Q.value = 1;
+
+          compressor.threshold.value = -24;
+          compressor.knee.value = 30;
+          compressor.ratio.value = 12;
+          compressor.attack.value = 0.003;
+          compressor.release.value = 0.25;
+
+          analyser.fftSize = 512;
+          analyser.smoothingTimeConstant = 0.8;
+
+          // Connect audio graph
+          masterGain.connect(filter);
+          filter.connect(compressor);
+          compressor.connect(analyser);
+          analyser.connect(audioContext.destination);
+
+          // Initialize analysis arrays
+          frequencyData = new Uint8Array(analyser.frequencyBinCount);
+          timeData = new Uint8Array(analyser.fftSize);
+
+          // Create voice pool (reuse for memory efficiency)
+          for (let i = 0; i < 32; i++) {
+            voicePool.push(createVoice());
+          }
+
+          console.log("Audio system initialized");
+        } catch (err) {
+          console.error("Audio initialization failed:", err);
+        }
+      }
+
+      // Voice creation (ADSR envelope, oscillator)
+      function createVoice() {
+        const voice = {
+          osc: null,
+          gain: null,
+          envelope: null,
+          active: false,
+          note: 0,
+          channel: 0,
+        };
+        return voice;
+      }
+
+      // WebGL setup with minimal shaders
+      function setupWebGL() {
+        canvas = document.getElementById("visualizer");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        gl = canvas.getContext("webgl");
+        if (!gl) {
+          console.error("WebGL not supported");
+          return;
+        }
+
+        // Vertex shader (minimal)
+        const vertexShaderSource = `
+                attribute vec2 position;
+                attribute vec3 color;
+                varying vec3 vColor;
+                uniform vec2 resolution;
+                uniform float time;
+                
+                void main() {
+                    vec2 pos = position / resolution * 2.0 - 1.0;
+                    pos.y *= -1.0;
+                    
+                    // Simple wave distortion based on audio
+                    pos.x += sin(time + pos.y * 10.0) * 0.1;
+                    
+                    gl_Position = vec4(pos, 0.0, 1.0);
+                    gl_PointSize = 2.0 + color.r * 4.0;
+                    vColor = color;
+                }
+            `;
+
+        // Fragment shader (minimal)
+        const fragmentShaderSource = `
+                precision mediump float;
+                varying vec3 vColor;
+                
+                void main() {
+                    vec2 center = gl_PointCoord - 0.5;
+                    float dist = length(center);
+                    float alpha = smoothstep(0.5, 0.3, dist);
+                    
+                    gl_FragColor = vec4(vColor * alpha, alpha);
+                }
+            `;
+
+        // Compile and setup shaders
+        const vertexShader = compileShader(
+          gl.VERTEX_SHADER,
+          vertexShaderSource
+        );
+        const fragmentShader = compileShader(
+          gl.FRAGMENT_SHADER,
+          fragmentShaderSource
+        );
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+          console.error("Shader program failed to link");
+          return;
+        }
+
+        // Create reusable buffers
+        positionBuffer = gl.createBuffer();
+        colorBuffer = gl.createBuffer();
+
+        // Initialize particles
+        for (let i = 0; i < 256; i++) {
+          particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            r: Math.random(),
+            g: Math.random(),
+            b: Math.random(),
+          });
+        }
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.clearColor(0, 0, 0, 1);
+      }
+
+      function compileShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error(
+            "Shader compilation error:",
+            gl.getShaderInfoLog(shader)
+          );
+          gl.deleteShader(shader);
+          return null;
+        }
+
+        return shader;
+      }
+
+      // UI Setup
+      function setupUI() {
+        // Load saved settings
+        const savedName = localStorage.getItem("polyphonic_name");
+        if (savedName) {
+          document.getElementById("displayName").value = savedName;
+        }
+
+        // Setup control listeners
+        const bpmSlider = document.getElementById("bpm");
+        const gainSlider = document.getElementById("masterGain");
+        const filterSlider = document.getElementById("filterFreq");
+
+        bpmSlider.addEventListener("input", (e) => {
+          currentBPM = parseInt(e.target.value);
+          document.getElementById("bpmValue").textContent = currentBPM;
+          if (isHost && isReady) {
+            broadcastTempo();
+          }
+        });
+
+        gainSlider.addEventListener("input", (e) => {
+          const gain = parseFloat(e.target.value) / 100;
+          document.getElementById("gainValue").textContent = e.target.value;
+          if (masterGain) {
+            masterGain.gain.setTargetAtTime(
+              gain,
+              audioContext.currentTime,
+              0.01
+            );
+          }
+        });
+
+        filterSlider.addEventListener("input", (e) => {
+          const freq = parseFloat(e.target.value);
+          document.getElementById("filterValue").textContent = freq;
+          if (filter) {
+            filter.frequency.setTargetAtTime(
+              freq,
+              audioContext.currentTime,
+              0.01
+            );
+          }
+        });
+
+        // Save name on change
+        document
+          .getElementById("displayName")
+          .addEventListener("input", (e) => {
+            localStorage.setItem("polyphonic_name", e.target.value);
+          });
+      }
+
+      // Keyboard setup
+      function setupKeyboard() {
+        const keyboard = document.getElementById("keyboard");
+        keyboard.innerHTML = ""; // Clear previous keys if any
+        const keys = [
+          "C",
+          "C#",
+          "D",
+          "D#",
+          "E",
+          "F",
+          "F#",
+          "G",
+          "G#",
+          "A",
+          "A#",
+          "B",
+        ];
+
+        for (let octave = 4; octave <= 4; octave++) {
+          // Only show C4-B4 visually
+          for (let i = 0; i < keys.length; i++) {
+            const key = document.createElement("div");
+            key.className = `key ${keys[i].includes("#") ? "black" : "white"}`;
+            key.textContent = keys[i] + octave;
+
+            const note = octave * 12 + i;
+            key.addEventListener("mousedown", () => startNote(note));
+            key.addEventListener("mouseup", () => stopNote(note));
+            key.addEventListener("mouseleave", () => stopNote(note));
+
+            keyboard.appendChild(key);
+          }
+        }
+        updateKeyboardState();
+      }
+
+      function updateKeyboardState() {
+        const keyboard = document.getElementById("keyboard");
+        keyboard.classList.toggle("enabled", keyboardEnabled);
+
+        const keys = document.querySelectorAll(".key");
+        keys.forEach((key) => {
+          key.classList.toggle("disabled", !keyboardEnabled);
+        });
+      }
+
+      // Keyboard event handlers
+      function handleKeyDown(e) {
+        if (!keyboardEnabled || e.repeat) return;
+
+        const note = keyMap[e.code];
+        if (note) {
+          e.preventDefault();
+          startNote(note);
+        }
+      }
+
+      function handleKeyUp(e) {
+        if (!keyboardEnabled) return;
+
+        const note = keyMap[e.code];
+        if (note) {
+          e.preventDefault();
+          stopNote(note);
+        }
+      }
+
+      function loadSettings() {
+        // Load from localStorage
+        const savedBPM = localStorage.getItem("polyphonic_bpm");
+        if (savedBPM) {
+          currentBPM = parseInt(savedBPM);
+        }
+      }
+
+      // Note playing functions
+      function startNote(note, velocity = 100) {
+        if (!audioContext) return;
+        try {
+          // Find available voice from pool
+          let voice = voicePool.find((v) => !v.active);
+          if (!voice) {
+            // Steal oldest voice if pool full
+            voice = voicePool[0];
+            if (voice.active) {
+              stopVoice(voice);
+            }
+          }
+
+          // Create oscillator and envelope
+          voice.osc = audioContext.createOscillator();
+          voice.gain = audioContext.createGain();
+          voice.envelope = audioContext.createGain();
+
+          // Configure oscillator
+          const freq = 440 * Math.pow(2, (note - 69) / 12);
+          voice.osc.frequency.value = freq;
+          voice.osc.type = "sawtooth";
+
+          // Connect audio nodes: osc -> gain -> envelope -> masterGain
+          voice.osc.connect(voice.gain);
+          voice.gain.connect(voice.envelope);
+          voice.envelope.connect(masterGain);
+
+          // ADSR envelope configuration
+          const now = audioContext.currentTime;
+          const attack = 0.01;
+          const decay = 0.1;
+          const sustain = 0.7;
+          const maxGain = (velocity / 127) * 0.8 + 0.2; // velocity to gain
+
+          voice.gain.gain.setValueAtTime(1, now);
+          voice.envelope.gain.cancelScheduledValues(now);
+          voice.envelope.gain.setValueAtTime(0, now);
+          voice.envelope.gain.linearRampToValueAtTime(maxGain, now + attack);
+          voice.envelope.gain.linearRampToValueAtTime(
+            maxGain * sustain,
+            now + attack + decay
+          );
+
+          // Start oscillator
+          voice.osc.start(now);
+
+          // Mark as active and store
+          voice.active = true;
+          voice.note = note;
+          activeVoices.set(note, voice);
+
+          // Update visual feedback
+          updateKeyVisual(note, true);
+
+          // Only send to peers if this is a local user action
+          if (currentMode === "p2p" && isReady && !startNote._fromPeer) {
+            sendNoteEvent(MSG_NOTE_ON, note, velocity, 0);
+          }
+        } catch (err) {
+          console.error("Error starting note:", err);
+        }
+      }
+
+      function stopNote(note) {
+        try {
+          const voice = activeVoices.get(note);
+          if (voice && voice.active) {
+            stopVoice(voice);
+            activeVoices.delete(note);
+
+            // Only send to peers if this is a local user action
+            if (currentMode === "p2p" && isReady && !stopNote._fromPeer) {
+              sendNoteEvent(MSG_NOTE_OFF, note, 0, 0);
+            }
+
+            // Update visual feedback
+            updateKeyVisual(note, false);
+          }
+        } catch (err) {
+          console.error("Error stopping note:", err);
+        }
+      }
+
+      function stopVoice(voice) {
+        if (!voice || !voice.active) return;
+
+        try {
+          const now = audioContext.currentTime;
+          const release = 0.2;
+
+          // Release envelope
+          voice.envelope.gain.cancelScheduledValues(now);
+          voice.envelope.gain.setValueAtTime(voice.envelope.gain.value, now);
+          voice.envelope.gain.linearRampToValueAtTime(0, now + release);
+
+          // Stop oscillator after release
+          voice.osc.stop(now + release);
+          voice.active = false;
+        } catch (err) {
+          console.error("Error in stopVoice:", err);
+        }
+      }
+
+      function updateKeyVisual(note, active) {
+        // Update piano key visual state
+        const keys = document.querySelectorAll(".key");
+        keys.forEach((key) => {
+          const keyText = key.textContent;
+          const octave = parseInt(keyText.slice(-1));
+          const noteName = keyText.slice(0, -1);
+          const noteIndex = [
+            "C",
+            "C#",
+            "D",
+            "D#",
+            "E",
+            "F",
+            "F#",
+            "G",
+            "G#",
+            "A",
+            "A#",
+            "B",
+          ].indexOf(noteName);
+          const keyNote = octave * 12 + noteIndex;
+
+          if (keyNote === note) {
+            key.classList.toggle("active", active);
+          }
+        });
+      }
+
+      // WebRTC Connection Management
+      let localConnection = null;
+      let dataChannel = null;
+
+      function createOffer() {
+        if (!validateName()) return;
+
+        try {
+          localConnection = new RTCPeerConnection({
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+              {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
+            ],
+            iceCandidatePoolSize: 0,
+          });
+
+          setupConnection(localConnection);
+
+          dataChannel = localConnection.createDataChannel("polyphonic", {
+            ordered: false,
+            maxRetransmits: 1,
+          });
+          setupDataChannel(dataChannel);
+
+          isHost = true;
+          document.getElementById("pasteAnswerBtn").disabled = false;
+
+          localConnection
+            .createOffer()
+            .then((offer) => localConnection.setLocalDescription(offer))
+            .then(() => {
+              updateStatus("Creating offer... please wait");
+              // Wait for ICE gathering to complete (robust)
+              return new Promise((resolve) => {
+                if (localConnection.iceGatheringState === "complete") {
+                  resolve();
+                } else {
+                  const checkState = () => {
+                    if (localConnection.iceGatheringState === "complete") {
+                      localConnection.removeEventListener(
+                        "icegatheringstatechange",
+                        checkState
+                      );
+                      resolve();
+                    }
+                  };
+                  localConnection.addEventListener(
+                    "icegatheringstatechange",
+                    checkState
+                  );
+                  // Timeout fallback
+                  setTimeout(() => {
+                    localConnection.removeEventListener(
+                      "icegatheringstatechange",
+                      checkState
+                    );
+                    resolve();
+                  }, 5000);
+                }
+              });
+            })
+            .then(() => {
+              const sdp = localConnection.localDescription.sdp;
+              // Encode SDP as base64 to prevent formatting issues
+              const sdpBase64 = btoa(unescape(encodeURIComponent(sdp)));
+              document.getElementById("sdpInput").value = sdpBase64;
+
+              // Try to copy to clipboard
+              navigator.clipboard
+                .writeText(sdpBase64)
+                .then(() =>
+                  updateStatus(
+                    "✓ Offer (base64) copied to clipboard! Send to peer.",
+                    "ready"
+                  )
+                )
+                .catch(() =>
+                  updateStatus(
+                    "✓ Offer (base64) ready in text area - copy and send to peer",
+                    "ready"
+                  )
+                );
+            })
+            .catch((err) => {
+              console.error("Error creating offer:", err);
+              updateStatus("Error creating offer: " + err.message, "error");
+            });
+        } catch (err) {
+          console.error("Error in createOffer:", err);
+          updateStatus("Error: " + err.message, "error");
+        }
+      }
+
+      function pasteOffer() {
+        let sdpBase64 = document.getElementById("sdpInput").value.trim();
+        if (!sdpBase64) {
+          updateStatus("Please paste an offer in the text area first", "error");
+          return;
+        }
+        if (!validateName()) return;
+
+        let sdp = "";
+        try {
+          // Decode base64 to SDP string
+          sdp = decodeURIComponent(escape(atob(sdpBase64)));
+        } catch (e) {
+          updateStatus(
+            "Failed to decode offer. Make sure you pasted the base64-encoded offer.",
+            "error"
+          );
+          return;
+        }
+
+        // 4. Check for offer/answer confusion
+        if (/^a=ice-lite/m.test(sdp) && !/a=setup:actpass/m.test(sdp)) {
+          updateStatus(
+            "This looks like an answer SDP, not an offer. Please paste the offer.",
+            "error"
+          );
+          return;
+        }
+
+        // 5. Basic SDP validation - check for session description structure
+        if (!/^v=0/m.test(sdp) || !/^o=/m.test(sdp) || !/^s=/m.test(sdp)) {
+          updateStatus(
+            "Invalid SDP format - please check the offer. Make sure you copied the entire offer, including all lines.",
+            "error"
+          );
+          return;
+        }
+
+        // 6. Check for offer type
+        if (!/a=setup:actpass/m.test(sdp)) {
+          updateStatus(
+            "This does not look like an SDP offer (missing 'a=setup:actpass'). Please check you copied the offer, not the answer.",
+            "error"
+          );
+          return;
+        }
+
+        try {
+          localConnection = new RTCPeerConnection({
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+              {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
+            ],
+            iceCandidatePoolSize: 0,
+          });
+
+          setupConnection(localConnection);
+
+          localConnection.ondatachannel = (e) => {
+            dataChannel = e.channel;
+            setupDataChannel(dataChannel);
+          };
+
+          localConnection
+            .setRemoteDescription({ type: "offer", sdp })
+            .then(() => {
+              document.getElementById("answerBtn").disabled = false;
+              updateStatus('✓ Offer received - click "Create Answer"', "ready");
+            })
+            .catch((err) => {
+              console.error("Error setting remote description:", err);
+              updateStatus(
+                "Invalid offer SDP - check format. Make sure you copied the full offer from the other peer.",
+                "error"
+              );
+            });
+        } catch (err) {
+          console.error("Error in pasteOffer:", err);
+          updateStatus("Error processing offer: " + err.message, "error");
+        }
+      }
+
+      function createAnswer() {
+        if (!localConnection) {
+          updateStatus("No offer received - paste offer first", "error");
+          return;
+        }
+
+        localConnection
+          .createAnswer()
+          .then((answer) => localConnection.setLocalDescription(answer))
+          .then(() => {
+            updateStatus("Creating answer... please wait");
+            // Wait for ICE gathering to complete (robust)
+            return new Promise((resolve) => {
+              if (localConnection.iceGatheringState === "complete") {
+                resolve();
+              } else {
+                const checkState = () => {
+                  if (localConnection.iceGatheringState === "complete") {
+                    localConnection.removeEventListener(
+                      "icegatheringstatechange",
+                      checkState
+                    );
+                    resolve();
+                  }
+                };
+                localConnection.addEventListener(
+                  "icegatheringstatechange",
+                  checkState
+                );
+                // Timeout fallback
+                setTimeout(() => {
+                  localConnection.removeEventListener(
+                    "icegatheringstatechange",
+                    checkState
+                  );
+                  resolve();
+                }, 5000);
+              }
+            });
+          })
+          .then(() => {
+            const sdp = localConnection.localDescription.sdp;
+            // Encode SDP as base64 to prevent formatting issues
+            const sdpBase64 = btoa(unescape(encodeURIComponent(sdp)));
+            document.getElementById("sdpInput").value = sdpBase64;
+
+            // Try to copy to clipboard
+            navigator.clipboard
+              .writeText(sdpBase64)
+              .then(() =>
+                updateStatus(
+                  "✓ Answer (base64) copied to clipboard! Send to host.",
+                  "ready"
+                )
+              )
+              .catch(() =>
+                updateStatus(
+                  "✓ Answer (base64) ready in text area - copy and send to host",
+                  "ready"
+                )
+              );
+          })
+          .catch((err) => {
+            console.error("Error creating answer:", err);
+            updateStatus("Error creating answer: " + err.message, "error");
+          });
+      }
+
+      function pasteAnswer() {
+        let sdpBase64 = document.getElementById("sdpInput").value.trim();
+        if (!sdpBase64) {
+          updateStatus(
+            "Please paste the answer in the text area first",
+            "error"
+          );
+          return;
+        }
+        if (!localConnection) {
+          updateStatus("No connection - create offer first", "error");
+          return;
+        }
+
+        let sdp = "";
+        try {
+          // Decode base64 to SDP string
+          sdp = decodeURIComponent(escape(atob(sdpBase64)));
+        } catch (e) {
+          updateStatus(
+            "Failed to decode answer. Make sure you pasted the base64-encoded answer.",
+            "error"
+          );
+          return;
+        }
+
+        // Basic SDP validation - check for session description structure
+        if (
+          !sdp.includes("v=0") ||
+          !sdp.includes("o=") ||
+          !sdp.includes("s=")
+        ) {
+          updateStatus("Invalid answer SDP format", "error");
+          return;
+        }
+
+        try {
+          localConnection
+            .setRemoteDescription({ type: "answer", sdp })
+            .then(() => {
+              updateStatus("✓ Answer processed - connecting...", "connecting");
+            })
+            .catch((err) => {
+              console.error("Error setting answer:", err);
+              updateStatus("Invalid answer SDP - check format", "error");
+            });
+        } catch (err) {
+          console.error("Error in pasteAnswer:", err);
+          updateStatus("Error processing answer: " + err.message, "error");
+        }
+      }
+
+      function restartICE() {
+        if (localConnection) {
+          localConnection.restartIce();
+          updateStatus("ICE restart initiated", "connecting");
+        } else {
+          updateStatus("No connection to restart", "error");
+        }
+      }
+
+      function setupConnection(connection) {
+        connection.oniceconnectionstatechange = () => {
+          const state = connection.iceConnectionState;
+          updateStatus(
+            `ICE: ${state}`,
+            state === "connected" || state === "completed"
+              ? "ready"
+              : "connecting"
+          );
+
+          if (state === "connected" || state === "completed") {
+            document.getElementById("readyBtn").disabled = false;
+          } else if (state === "disconnected" || state === "failed") {
+            document.getElementById("readyBtn").disabled = true;
+            isReady = false;
+            keyboardEnabled = false;
+            updateKeyboardState();
+          }
+        };
+
+        connection.onconnectionstatechange = () => {
+          console.log("Connection state:", connection.connectionState);
+        };
+      }
+
+      function setupDataChannel(channel) {
+        channel.onopen = () => {
+          updateStatus("✓ Connected! Click Ready to start playing.", "ready");
+          document.getElementById("readyBtn").disabled = false;
+          sendJoinMessage();
+        };
+
+        channel.onclose = () => {
+          updateStatus("Data channel closed", "error");
+          document.getElementById("readyBtn").disabled = true;
+          isReady = false;
+          keyboardEnabled = false;
+          updateKeyboardState();
+        };
+
+        channel.onmessage = (e) => {
+          handleMessage(new Uint8Array(e.data));
+        };
+
+        channel.onerror = (err) => {
+          console.error("Data channel error:", err);
+          updateStatus("Data channel error", "error");
+        };
+      }
+
+      // Binary message protocol implementation
+      function sendJoinMessage() {
+        const name =
+          document.getElementById("displayName").value || "Anonymous";
+        const nameBytes = new TextEncoder().encode(name);
+        const msg = new Uint8Array(2 + nameBytes.length);
+        msg[0] = MSG_JOIN;
+        msg[1] = nameBytes.length;
+        msg.set(nameBytes, 2);
+        sendMessage(msg);
+      }
+
+      function sendNoteEvent(type, note, velocity, channel) {
+        // Add timestamp (uint32, ms since epoch)
+        const now = Date.now();
+        const msg = new Uint8Array(10);
+        msg[0] = type;
+        msg[1] = note & 0x7f;
+        msg[2] = velocity & 0x7f;
+        msg[3] = channel & 0x0f;
+        // Timestamp (uint32, little-endian)
+        msg[4] = now & 0xff;
+        msg[5] = (now >> 8) & 0xff;
+        msg[6] = (now >> 16) & 0xff;
+        msg[7] = (now >> 24) & 0xff;
+        // Reserved for future use
+        msg[8] = 0;
+        msg[9] = 0;
+
+        // Batch messages for efficiency
+        messageBatch.push(msg);
+
+        if (Date.now() - lastFlush > 10) {
+          // Flush every 10ms
+          flushMessageBatch();
+        }
+      }
+
+      function broadcastTempo() {
+        if (!isHost) return;
+
+        const msg = new Uint8Array(7);
+        msg[0] = MSG_TEMPO;
+
+        // BPM (uint16 little-endian)
+        msg[1] = currentBPM & 0xff;
+        msg[2] = (currentBPM >> 8) & 0xff;
+
+        // Epoch ms (uint32 little-endian)
+        const now = Date.now();
+        msg[3] = now & 0xff;
+        msg[4] = (now >> 8) & 0xff;
+        msg[5] = (now >> 16) & 0xff;
+        msg[6] = (now >> 24) & 0xff;
+
+        sendMessage(msg);
+        lastTempoTime = now;
+      }
+
+      function flushMessageBatch() {
+        if (messageBatch.length === 0) return;
+
+        // Calculate total size
+        let totalSize = 0;
+        messageBatch.forEach((msg) => (totalSize += msg.length));
+
+        // Pack into single message
+        const packed = new Uint8Array(totalSize);
+        let offset = 0;
+        messageBatch.forEach((msg) => {
+          packed.set(msg, offset);
+          offset += msg.length;
+        });
+
+        sendMessage(packed);
+        messageBatch = [];
+        lastFlush = Date.now();
+      }
+
+      function sendMessage(data) {
+        if (dataChannel && dataChannel.readyState === "open") {
+          try {
+            dataChannel.send(data);
+          } catch (err) {
+            console.error("Error sending message:", err);
+          }
+        }
+      }
+
+      function handleMessage(data) {
+        let offset = 0;
+
+        while (offset < data.length) {
+          const opcode = data[offset];
+
+          try {
+            switch (opcode) {
+              case MSG_JOIN:
+                if (offset + 2 > data.length) return;
+                const nameLen = data[offset + 1];
+                if (offset + 2 + nameLen > data.length) return;
+                const name = new TextDecoder().decode(
+                  data.slice(offset + 2, offset + 2 + nameLen)
+                );
+                console.log("Peer joined:", name);
+                offset += 2 + nameLen;
+                break;
+
+              case MSG_READY:
+                if (offset + 2 > data.length) return;
+                const ready = data[offset + 1] === 1;
+                console.log("Peer ready:", ready);
+                offset += 2;
+                break;
+
+              case MSG_NOTE_ON:
+              case MSG_NOTE_OFF:
+                if (offset + 10 > data.length) return;
+                const note = data[offset + 1];
+                const velocity = data[offset + 2];
+                const channel = data[offset + 3];
+                // Timestamp (uint32, little-endian)
+                const remoteTs =
+                  data[offset + 4] |
+                  (data[offset + 5] << 8) |
+                  (data[offset + 6] << 16) |
+                  (data[offset + 7] << 24);
+                // Calculate local time to schedule note
+                const now = Date.now();
+                let latency = now - remoteTs;
+                if (latency < 0) latency = 0;
+                const schedule = (fn) => {
+                  if (latency < 10) {
+                    fn();
+                  } else {
+                    setTimeout(fn, Math.min(latency, 200));
+                  }
+                };
+                if (opcode === MSG_NOTE_ON && velocity > 0) {
+                  startNote._fromPeer = true;
+                  schedule(() => {
+                    startNote(note, velocity);
+                    startNote._fromPeer = false;
+                  });
+                } else {
+                  stopNote._fromPeer = true;
+                  schedule(() => {
+                    stopNote(note);
+                    stopNote._fromPeer = false;
+                  });
+                }
+                offset += 10;
+                break;
+
+              case MSG_TEMPO:
+                if (offset + 7 > data.length) return;
+                const bpm = data[offset + 1] | (data[offset + 2] << 8);
+                const epoch =
+                  data[offset + 3] |
+                  (data[offset + 4] << 8) |
+                  (data[offset + 5] << 16) |
+                  (data[offset + 6] << 24);
+
+                if (!isHost) {
+                  // Simple PLL drift correction: gradually adjust our clock offset
+                  // based on the difference between received and local timestamps
+                  const localTime = Date.now();
+                  const drift = epoch - localTime;
+                  clockOffset += drift * 0.01; // Low-pass filter for stability
+
+                  currentBPM = bpm;
+                  document.getElementById("bpm").value = bpm;
+                  document.getElementById("bpmValue").textContent = bpm;
+                }
+                offset += 7;
+                break;
+
+              default:
+                // Ignore unknown opcodes - skip single byte
+                offset += 1;
+                break;
+            }
+          } catch (err) {
+            console.error("Error handling message:", err);
+            break;
+          }
+        }
+      }
+
+      // UI functions
+      function toggleReady() {
+        isReady = !isReady;
+        keyboardEnabled = isReady;
+
+        const btn = document.getElementById("readyBtn");
+        btn.textContent = isReady
+          ? "Stop Playing"
+          : currentMode === "offline"
+          ? "Ready to Play"
+          : "Ready to Play";
+        btn.className = isReady ? "stop" : "ready";
+
+        updateKeyboardState();
+
+        if (currentMode === "p2p") {
+          const msg = new Uint8Array(2);
+          msg[0] = MSG_READY;
+          msg[1] = isReady ? 1 : 0;
+          sendMessage(msg);
+
+          if (isReady && isHost) {
+            // Start tempo broadcasts
+            setInterval(broadcastTempo, 250);
+          }
+        }
+
+        updateStatus(
+          isReady
+            ? `${
+                currentMode === "offline"
+                  ? "Playing solo"
+                  : "Playing with peers"
+              } - keyboard enabled`
+            : "Stopped - keyboard disabled"
+        );
+      }
+
+      function toggleUI() {
+        const ui = document.getElementById("ui");
+        ui.classList.toggle("minimized");
+        const minBtn = document.querySelector(".minimize");
+        if (ui.classList.contains("minimized")) {
+          minBtn.textContent = "+";
+          minBtn.title = "Maximize UI";
+        } else {
+          minBtn.textContent = "−";
+          minBtn.title = "Minimize UI";
+        }
+      }
+
+      function updateStatus(message, type = "") {
+        const status = document.getElementById("connectionStatus");
+        status.textContent = message;
+        status.className = `status ${type}`;
+      }
+
+      function validateName() {
+        const name = document.getElementById("displayName").value;
+        if (!name || !/^[A-Z0-9]+$/i.test(name)) {
+          updateStatus("Please enter a valid name (A-Z, 0-9 only)", "error");
+          return false;
+        }
+        return true;
+      }
+
+      // Render loop
+      function render(timestamp) {
+        requestAnimationFrame(render);
+
+        // Calculate FPS
+        const deltaTime = timestamp - lastFrame;
+        const fps = Math.round(1000 / deltaTime);
+        document.getElementById("fps").textContent = `FPS: ${fps}`;
+        lastFrame = timestamp;
+        frameCount++;
+
+        // Update audio analysis
+        if (analyser && frequencyData && timeData) {
+          analyser.getByteFrequencyData(frequencyData);
+          analyser.getByteTimeDomainData(timeData);
+        }
+
+        // Render WebGL
+        if (gl && shaderProgram) {
+          renderWebGL(timestamp);
+        }
+
+        // Update peer count
+        document.getElementById(
+          "peerCount"
+        ).textContent = `Peers: ${peers.size}`;
+
+        // Flush any pending messages
+        if (messageBatch.length > 0 && Date.now() - lastFlush > 10) {
+          flushMessageBatch();
+        }
+      }
+
+      function renderWebGL(time) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        if (!frequencyData) return;
+
+        // Update particles based on audio (reuse arrays - no allocation)
+        const positions = new Float32Array(particles.length * 2);
+        const colors = new Float32Array(particles.length * 3);
+
+        for (let i = 0; i < particles.length; i++) {
+          const particle = particles[i];
+          const audioIndex = Math.floor(
+            (i / particles.length) * frequencyData.length
+          );
+          const audioLevel = frequencyData[audioIndex] / 255;
+
+          // Update particle physics
+          particle.vx += (Math.random() - 0.5) * 0.1 * audioLevel;
+          particle.vy += (Math.random() - 0.5) * 0.1 * audioLevel;
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+
+          // Wrap around screen
+          if (particle.x < 0) particle.x = canvas.width;
+          if (particle.x > canvas.width) particle.x = 0;
+          if (particle.y < 0) particle.y = canvas.height;
+          if (particle.y > canvas.height) particle.y = 0;
+
+          // Apply audio influence to color
+          particle.r = audioLevel;
+          particle.g = Math.sin(time * 0.001 + i * 0.1) * 0.5 + 0.5;
+          particle.b = Math.cos(time * 0.001 + i * 0.1) * 0.5 + 0.5;
+
+          // Store in reused arrays
+          positions[i * 2] = particle.x;
+          positions[i * 2 + 1] = particle.y;
+          colors[i * 3] = particle.r;
+          colors[i * 3 + 1] = particle.g;
+          colors[i * 3 + 2] = particle.b;
+        }
+
+        // Upload data to GPU (reuse buffers)
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.BUFFER_ARRAY, colors, gl.DYNAMIC_DRAW);
+
+        // Use shader program
+        gl.useProgram(shaderProgram);
+
+        // Set uniforms
+        const resolutionLocation = gl.getUniformLocation(
+          shaderProgram,
+          "resolution"
+        );
+        const timeLocation = gl.getUniformLocation(shaderProgram, "time");
+
+        gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+        gl.uniform1f(timeLocation, time * 0.001);
+
+        // Set attributes
+        const positionLocation = gl.getAttribLocation(
+          shaderProgram,
+          "position"
+        );
+        const colorLocation = gl.getAttribLocation(shaderProgram, "color");
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.enableVertexAttribArray(colorLocation);
+        gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+
+        // Draw particles
+        gl.drawArrays(gl.POINTS, 0, particles.length);
+      }
+
+      // Window resize handler
+      window.addEventListener("resize", () => {
+        if (canvas) {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+      });
+
+      // Cleanup on page unload
+      window.addEventListener("beforeunload", () => {
+        if (localConnection) {
+          localConnection.close();
+        }
+        if (audioContext) {
+          audioContext.close();
+        }
+      });
+    </script>
+  </body>
+</html>
